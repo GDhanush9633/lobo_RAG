@@ -39,8 +39,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Walworth LOBO – Intelligent RAG Assistant")
-# st.caption("Powered by Azure OpenAI + Azure AI Search")
+st.title("🐺 Walworth LOBO – Intelligent RAG Assistant")
+st.caption("Powered by Azure OpenAI + Azure AI Search")
 
 # ----------------------------
 # Sidebar
