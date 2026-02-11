@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+gunicorn
+langchain-openai
+langchain-community
+langchain-core
+azure-search-documents
+azure-identity
+python-dotenv
+pypdf
+langchain
+streamlit
+langchain
+openai
+tiktoken
+pydantic
+
