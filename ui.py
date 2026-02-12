@@ -39,7 +39,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Walworth LOBO – Intelligent RAG Assistant")
+st.title("🐺 Walworth LOBO – Intelligent RAG Assistant")
 st.caption("Powered by Azure OpenAI + Azure AI Search")
 
 # ----------------------------
@@ -165,7 +165,8 @@ for msg in st.session_state.messages:
                         unsafe_allow_html=True,
                     )
 
-                st.divider()
+                    st.divider()
+
 
 
 st.markdown('</div>', unsafe_allow_html=True)
