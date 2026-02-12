@@ -219,6 +219,12 @@ vector_store = AzureSearch(
     embedding_function=embeddings.embed_query,
 )
 
+try:
+    vector_store.client.get_index(AZURE_SEARCH_INDEX)
+    print(f"Index '{AZURE_SEARCH_INDEX}' exists.")
+except Exception:
+    print(f"Index '{AZURE_SEARCH_INDEX}' does not exist. It will be created when documents are uploaded.")
+
 # ---------------------------
 # Prompt
 # ---------------------------
