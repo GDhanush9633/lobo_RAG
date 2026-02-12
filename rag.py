@@ -543,46 +543,33 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
     docs = []
 
-    try:
+    for temp_path, original_name in file_paths:
 
-        for temp_path, original_name in file_paths:
+        loader = PyPDFLoader(temp_path)
+        loaded_docs = loader.load()
 
-            loader = PyPDFLoader(temp_path)
+        for d in loaded_docs:
+            d.metadata = {
+                "file_name": original_name,
+                "source": original_name,
+            }
 
-            loaded = loader.load()
+        docs.extend(loaded_docs)
 
-            for d in loaded:
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=150,
+    )
 
-                d.metadata["id"] = str(uuid.uuid4())
+    chunks = splitter.split_documents(docs)
 
-                d.metadata["file_name"] = original_name
+    # This creates index automatically with correct schema
+    AzureSearch.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
+        azure_search_key=AZURE_SEARCH_KEY,
+        index_name=AZURE_SEARCH_INDEX,
+    )
 
-                d.metadata["source"] = original_name
-
-            docs.extend(loaded)
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=150,
-        )
-
-        chunks = splitter.split_documents(docs)
-
-        # IMPORTANT: ensure each chunk has unique ID
-        for chunk in chunks:
-
-            chunk.metadata["id"] = str(uuid.uuid4())
-
-            if "file_name" not in chunk.metadata:
-                chunk.metadata["file_name"] = "unknown.pdf"
-
-        vector_store.add_documents(chunks)
-
-        return len(chunks)
-
-    except Exception as e:
-
-        print(traceback.format_exc())
-
-        raise Exception(f"Azure Search Upload Error: {str(e)}")
-
+    return len(chunks)
