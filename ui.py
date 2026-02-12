@@ -61,11 +61,12 @@ with st.sidebar:
 
             for file in uploaded_files:
                 file_names.append(file.name)
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                     tmp.write(file.read())
-                    temp_paths.append(tmp.name)
+                    temp_paths.append((tmp.name, file.name))
 
-            chunks = ingest_documents(temp_paths)
+                    chunks = ingest_documents(temp_paths)
 
             st.success("✅ Documents uploaded successfully!")
             st.info(f"📄 Files: {', '.join(file_names)}")

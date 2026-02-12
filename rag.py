@@ -323,17 +323,17 @@ def answer_question(question: str, k: int = 3):
 # ---------------------------
 # Ingest Documents
 # ---------------------------
-def ingest_documents(file_paths: list[str]) -> int:
+def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
     docs = []
 
-    for path in file_paths:
+    for path, original_name in file_paths:
         loader = PyPDFLoader(path)
         loaded_docs = loader.load()
 
         for d in loaded_docs:
             d.metadata["source"] = "user_upload"
-            d.metadata["file_name"] = path.split("/")[-1]
+            d.metadata["file_name"] = original_name  # ✅ real file name
 
         docs.extend(loaded_docs)
 
@@ -346,3 +346,4 @@ def ingest_documents(file_paths: list[str]) -> int:
     vector_store.add_documents(chunks)
 
     return len(chunks)
+
