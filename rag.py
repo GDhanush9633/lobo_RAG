@@ -1,4 +1,3 @@
-
 import streamlit as st
 import uuid
 import traceback
@@ -49,30 +48,22 @@ if any(v is None for v in required):
 
 
 # ---------------------------
-# Clean PDF Text Properly
+# Clean PDF text
 # ---------------------------
 def clean_pdf_text(text: str) -> str:
-    """
-    Fix broken PDF formatting while preserving paragraphs.
-    """
 
     if not text:
         return ""
 
-    # Replace single newlines with space
     text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
-
-    # Replace multiple newlines with paragraph break
     text = re.sub(r'\n{2,}', '\n\n', text)
-
-    # Remove extra spaces
     text = re.sub(r'\s+', ' ', text)
 
     return text.strip()
 
 
 # ---------------------------
-# Clean Text for Prompt Safety
+# Clean prompt text
 # ---------------------------
 def clean_text(text: str) -> str:
 
@@ -84,18 +75,14 @@ def clean_text(text: str) -> str:
         "override",
     ]
 
-    cleaned = text
-
     for word in blocked_words:
-        cleaned = cleaned.replace(word, "")
+        text = text.replace(word, "")
 
-    cleaned = clean_pdf_text(cleaned)
-
-    return cleaned[:1200]
+    return clean_pdf_text(text)[:1200]
 
 
 # ---------------------------
-# Azure OpenAI Chat
+# Azure OpenAI
 # ---------------------------
 llm = AzureChatOpenAI(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -105,10 +92,6 @@ llm = AzureChatOpenAI(
     temperature=0,
 )
 
-
-# ---------------------------
-# Azure Embeddings
-# ---------------------------
 embeddings = AzureOpenAIEmbeddings(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     api_key=AZURE_OPENAI_KEY,
@@ -118,14 +101,16 @@ embeddings = AzureOpenAIEmbeddings(
 
 
 # ---------------------------
-# Azure Search Vector Store
+# Lazy vector store init
 # ---------------------------
-vector_store = AzureSearch(
-    azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
-    azure_search_key=AZURE_SEARCH_KEY,
-    index_name=AZURE_SEARCH_INDEX,
-    embedding_function=embeddings.embed_query,
-)
+def get_vector_store():
+
+    return AzureSearch(
+        azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
+        azure_search_key=AZURE_SEARCH_KEY,
+        index_name=AZURE_SEARCH_INDEX,
+        embedding_function=embeddings.embed_query,
+    )
 
 
 # ---------------------------
@@ -150,11 +135,13 @@ Answer:
 
 
 # ---------------------------
-# Answer Question
+# Answer question
 # ---------------------------
-def answer_question(question: str, k: int = 3):
+def answer_question(question: str, k: int = 5):
 
     try:
+
+        vector_store = get_vector_store()
 
         docs_and_scores = vector_store.similarity_search_with_score(
             question,
@@ -162,17 +149,22 @@ def answer_question(question: str, k: int = 3):
         )
 
         if not docs_and_scores:
+
             return {
-                "answer": "No relevant information found in uploaded documents.",
+                "answer": "No relevant information found.",
                 "sources": [],
                 "no_context": True,
             }
 
-        # docs = [doc for doc, _ in docs_and_scores]
-        docs = [
-    doc for doc, score in docs_and_scores
-    if score < 0.05
-]
+        docs = [doc for doc, score in docs_and_scores if score < 0.05]
+
+        if not docs:
+
+            return {
+                "answer": "No relevant information found.",
+                "sources": [],
+                "no_context": True,
+            }
 
         context = "\n\n".join(
             clean_text(doc.page_content)
@@ -202,7 +194,7 @@ def answer_question(question: str, k: int = 3):
             "no_context": False,
         }
 
-    except Exception as e:
+    except Exception:
 
         print(traceback.format_exc())
 
@@ -214,7 +206,7 @@ def answer_question(question: str, k: int = 3):
 
 
 # ---------------------------
-# Ingest Documents (FINAL FIXED VERSION)
+# Ingest documents
 # ---------------------------
 def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
@@ -227,10 +219,8 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
         for d in loaded_docs:
 
-            # Clean text BEFORE storing
             d.page_content = clean_pdf_text(d.page_content)
 
-            # Preserve metadata
             d.metadata = {
                 "id": str(uuid.uuid4()),
                 "file_name": original_name,
@@ -247,20 +237,12 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
     chunks = splitter.split_documents(docs)
 
-    try:
-
-        # Automatically creates index with correct schema
-        AzureSearch.from_documents(
-            documents=chunks,
-            embedding=embeddings,
-            azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
-            azure_search_key=AZURE_SEARCH_KEY,
-            index_name=AZURE_SEARCH_INDEX,
-        )
-
-    except Exception as e:
-
-        print(traceback.format_exc())
-        raise Exception(f"Azure Search Upload Error: {str(e)}")
+    AzureSearch.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
+        azure_search_key=AZURE_SEARCH_KEY,
+        index_name=AZURE_SEARCH_INDEX,
+    )
 
     return len(chunks)
