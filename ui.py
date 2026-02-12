@@ -127,12 +127,46 @@ for msg in st.session_state.messages:
 
         elif msg.get("sources"):
             with st.expander("🔎 Retrieved Sources"):
+
                 for i, source in enumerate(msg["sources"], 1):
-                    st.markdown(f"**Chunk {i}**")
-                    st.write(f"📄 File: {source['metadata'].get('file_name', 'N/A')}")
-                    st.write(f"⭐ Score: {source['score']}")
-                    st.write(source["content"])
-                    st.divider()
+
+                    file_name = source["metadata"].get("file_name", "N/A")
+                    page = source["metadata"].get("page", "N/A")
+                    score = source.get("score", 0.0)
+
+                    # Clean content formatting
+                    content = source["content"].replace("\n\n", "\n").strip()
+
+                    st.markdown(f"### 📦 Chunk {i}")
+
+                    col1, col2 = st.columns([3, 1])
+
+                    with col1:
+                        st.markdown(f"**📄 File:** `{file_name}`")
+                        st.markdown(f"**📑 Page:** `{page}`")
+
+                    with col2:
+                        st.markdown(f"**⭐ Score:** `{score:.4f}`")
+
+                    st.markdown(
+                        f"""
+                        <div style="
+                            padding:12px;
+                            background-color:#f9fafb;
+                            border-radius:8px;
+                            border:1px solid #e5e7eb;
+                            font-size:14px;
+                            line-height:1.6;
+                            white-space: pre-wrap;
+                        ">
+                        {content}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                st.divider()
+
 
 st.markdown('</div>', unsafe_allow_html=True)
 
