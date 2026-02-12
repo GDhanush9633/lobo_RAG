@@ -758,7 +758,11 @@ def answer_question(question: str, k: int = 3):
                 "no_context": True,
             }
 
-        docs = [doc for doc, _ in docs_and_scores]
+        # docs = [doc for doc, _ in docs_and_scores]
+        docs = [
+    doc for doc, score in docs_and_scores
+    if score < 0.05
+]
 
         context = "\n\n".join(
             clean_text(doc.page_content)
@@ -827,8 +831,8 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
         docs.extend(loaded_docs)
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
+        chunk_size=1500,
+        chunk_overlap=300,
     )
 
     chunks = splitter.split_documents(docs)
