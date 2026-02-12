@@ -72,8 +72,9 @@ with st.sidebar:
             st.info(f"📄 Files: {', '.join(file_names)}")
             st.metric("Indexed Chunks", chunks)
 
-            for p in temp_paths:
-                os.remove(p)
+            for temp_path, original_name in temp_paths:
+                os.remove(temp_path)
+
 
     st.divider()
 
