@@ -3,9 +3,6 @@ import uuid
 import traceback
 import re
 
-from azure.search.documents.indexes import SearchIndexClient
-from azure.core.credentials import AzureKeyCredential
-
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores import AzureSearch
 from langchain_community.document_loaders import PyPDFLoader
@@ -48,31 +45,6 @@ required = [
 
 if any(v is None for v in required):
     raise Exception("Missing Azure configuration. Check Streamlit secrets.")
-
-
-# ---------------------------
-# DELETE INDEX (FREE TIER FIX)
-# ---------------------------
-def delete_index_if_exists():
-
-    try:
-
-        client = SearchIndexClient(
-            endpoint=AZURE_SEARCH_ENDPOINT,
-            credential=AzureKeyCredential(AZURE_SEARCH_KEY)
-        )
-
-        existing_indexes = [idx.name for idx in client.list_indexes()]
-
-        if AZURE_SEARCH_INDEX in existing_indexes:
-
-            client.delete_index(AZURE_SEARCH_INDEX)
-
-            print(f"Deleted existing index: {AZURE_SEARCH_INDEX}")
-
-    except Exception as e:
-
-        print("Index deletion skipped:", str(e))
 
 
 # ---------------------------
@@ -137,7 +109,7 @@ embeddings = AzureOpenAIEmbeddings(
 
 
 # ---------------------------
-# VECTOR STORE
+# VECTOR STORE GLOBAL
 # ---------------------------
 vector_store = None
 
@@ -159,7 +131,7 @@ def get_vector_store():
 
 
 # ---------------------------
-# PROMPT
+# PROMPT TEMPLATE
 # ---------------------------
 prompt = ChatPromptTemplate.from_template(
 """
@@ -237,11 +209,9 @@ def answer_question(question: str, k: int = 3):
             })
 
         return {
-
             "answer": response.content,
             "sources": sources,
             "no_context": False,
-
         }
 
     except Exception:
@@ -249,11 +219,9 @@ def answer_question(question: str, k: int = 3):
         print(traceback.format_exc())
 
         return {
-
             "answer": "Error retrieving answer.",
             "sources": [],
             "no_context": True,
-
         }
 
 
@@ -275,22 +243,17 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
             d.page_content = clean_pdf_text(d.page_content)
 
             d.metadata = {
-
                 "id": str(uuid.uuid4()),
                 "file_name": original_name,
                 "page": d.metadata.get("page", 0) + 1,
                 "source": original_name,
-
             }
 
         docs.extend(loaded_docs)
 
-    # FREE TIER OPTIMIZED SPLITTER
     splitter = RecursiveCharacterTextSplitter(
-
-        chunk_size=500,
+        chunk_size=400,
         chunk_overlap=50,
-
     )
 
     chunks = splitter.split_documents(docs)
@@ -299,26 +262,21 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
         global vector_store
 
-        # DELETE OLD INDEX FIRST
-        delete_index_if_exists()
-
-        # CREATE NEW INDEX
-        vector_store = AzureSearch.from_documents(
-
-            documents=chunks,
-            embedding=embeddings,
+        vector_store = AzureSearch(
             azure_search_endpoint=AZURE_SEARCH_ENDPOINT,
             azure_search_key=AZURE_SEARCH_KEY,
             index_name=AZURE_SEARCH_INDEX,
-
+            embedding_function=embeddings.embed_query,
         )
 
-        print(f"Ingested {len(chunks)} chunks")
+        vector_store.add_documents(chunks)
 
-    except Exception:
+        print(f"Successfully ingested {len(chunks)} chunks")
+
+    except Exception as e:
 
         print(traceback.format_exc())
 
-        raise Exception("Azure Search index creation failed.")
+        raise Exception(f"Azure Search ingestion failed: {str(e)}")
 
     return len(chunks)
