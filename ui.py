@@ -12,8 +12,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 st.set_page_config(
-    page_title="LOBO AI Assistant",
-    page_icon="🐺",
+    page_title="Walworth - LOBO AI Assistant",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
