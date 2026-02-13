@@ -3,6 +3,9 @@ import uuid
 import traceback
 import re
 
+from azure.search.documents.indexes import SearchIndexClient
+from azure.core.credentials import AzureKeyCredential
+
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores import AzureSearch
 from langchain_community.document_loaders import PyPDFLoader
@@ -45,6 +48,31 @@ required = [
 
 if any(v is None for v in required):
     raise Exception("Missing Azure configuration. Check Streamlit secrets.")
+
+
+# ---------------------------
+# DELETE INDEX (FREE TIER FIX)
+# ---------------------------
+def delete_index_if_exists():
+
+    try:
+
+        client = SearchIndexClient(
+            endpoint=AZURE_SEARCH_ENDPOINT,
+            credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+        )
+
+        existing_indexes = [idx.name for idx in client.list_indexes()]
+
+        if AZURE_SEARCH_INDEX in existing_indexes:
+
+            client.delete_index(AZURE_SEARCH_INDEX)
+
+            print(f"Deleted existing index: {AZURE_SEARCH_INDEX}")
+
+    except Exception as e:
+
+        print("Index deletion skipped:", str(e))
 
 
 # ---------------------------
@@ -109,7 +137,7 @@ embeddings = AzureOpenAIEmbeddings(
 
 
 # ---------------------------
-# VECTOR STORE (LAZY INIT FIX)
+# VECTOR STORE
 # ---------------------------
 vector_store = None
 
@@ -175,7 +203,7 @@ def answer_question(question: str, k: int = 3):
 
         docs = [
             doc for doc, score in docs_and_scores
-            if score < 0.5
+            if score < 0.6
         ]
 
         if not docs:
@@ -230,7 +258,7 @@ def answer_question(question: str, k: int = 3):
 
 
 # ---------------------------
-# INGEST DOCUMENTS (FIXED)
+# INGEST DOCUMENTS (FREE TIER SAFE)
 # ---------------------------
 def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
@@ -257,10 +285,11 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
         docs.extend(loaded_docs)
 
+    # FREE TIER OPTIMIZED SPLITTER
     splitter = RecursiveCharacterTextSplitter(
 
-        chunk_size=1500,
-        chunk_overlap=300,
+        chunk_size=500,
+        chunk_overlap=50,
 
     )
 
@@ -270,6 +299,10 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
         global vector_store
 
+        # DELETE OLD INDEX FIRST
+        delete_index_if_exists()
+
+        # CREATE NEW INDEX
         vector_store = AzureSearch.from_documents(
 
             documents=chunks,
@@ -279,6 +312,8 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
             index_name=AZURE_SEARCH_INDEX,
 
         )
+
+        print(f"Ingested {len(chunks)} chunks")
 
     except Exception:
 
