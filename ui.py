@@ -344,10 +344,10 @@ with st.sidebar:
     st.markdown("<hr style='margin: 24px 0;'>", unsafe_allow_html=True)
     
     # Retrieval Settings
-     st.markdown("### 🔍 Settings")
-     k_value = st.slider("Top-K Results", 1, 10, 5)
+    st.markdown("### 🔍 Settings")
+    k_value = st.slider("Top-K Results", 1, 10, 5)
     
-     st.markdown("<hr style='margin: 24px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: 24px 0;'>", unsafe_allow_html=True)
     
     # Actions
     st.markdown("### ⚡ Actions")
