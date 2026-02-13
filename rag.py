@@ -82,7 +82,7 @@ def clean_text(text: str) -> str:
 
     cleaned = clean_pdf_text(cleaned)
 
-    return cleaned[:1500]
+    return cleaned[:2000]
 
 
 # ---------------------------
@@ -131,18 +131,19 @@ def get_vector_store():
 
 
 # ---------------------------
-# IMPROVED RAG PROMPT
+# PRODUCTION RAG PROMPT
 # ---------------------------
 prompt = ChatPromptTemplate.from_template(
 """
 You are LOBO, an AI assistant helping users understand their uploaded documents.
 
-Instructions:
-- Answer using the provided context.
-- Explain clearly and naturally.
-- If context contains relevant information, answer using it.
-- Do NOT unnecessarily say "I don't know".
-- Only say "I don't know" if context truly has no relevant information.
+Your responsibilities:
+- Carefully analyze the provided context.
+- Infer meaning even if the question uses different wording.
+- Summarize systems, architecture, projects, or concepts clearly.
+- Use ONLY the provided context.
+- If context is partially relevant, still answer based on available information.
+- Only say "I don't know" if context truly contains nothing useful.
 
 Context:
 {context}
@@ -150,7 +151,7 @@ Context:
 Question:
 {question}
 
-Answer:
+Provide a clear, professional answer:
 """
 )
 
@@ -179,8 +180,10 @@ def answer_question(question: str, k: int = 5):
 
         docs = [doc for doc, score in docs_and_scores]
 
+        # Improved context formatting
         context = "\n\n".join(
-            clean_text(doc.page_content)
+            f"Document: {doc.metadata.get('file_name','')}, Page: {doc.metadata.get('page','')}\n"
+            + clean_text(doc.page_content)
             for doc in docs
         )
 
