@@ -82,18 +82,18 @@ def clean_text(text: str) -> str:
 
     cleaned = clean_pdf_text(cleaned)
 
-    return cleaned[:1200]
+    return cleaned[:1500]
 
 
 # ---------------------------
-# Azure OpenAI Chat
+# Azure OpenAI Chat Model
 # ---------------------------
 llm = AzureChatOpenAI(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     api_key=AZURE_OPENAI_KEY,
     azure_deployment=AZURE_OPENAI_CHAT_DEPLOYMENT,
     api_version=OPENAI_API_VERSION,
-    temperature=0,
+    temperature=0.2,
 )
 
 
@@ -131,14 +131,18 @@ def get_vector_store():
 
 
 # ---------------------------
-# PROMPT TEMPLATE
+# IMPROVED RAG PROMPT
 # ---------------------------
 prompt = ChatPromptTemplate.from_template(
 """
-Answer using ONLY the provided context.
+You are LOBO, an AI assistant helping users understand their uploaded documents.
 
-If answer is not in context, say:
-I don't know.
+Instructions:
+- Answer using the provided context.
+- Explain clearly and naturally.
+- If context contains relevant information, answer using it.
+- Do NOT unnecessarily say "I don't know".
+- Only say "I don't know" if context truly has no relevant information.
 
 Context:
 {context}
@@ -154,7 +158,7 @@ Answer:
 # ---------------------------
 # ANSWER QUESTION
 # ---------------------------
-def answer_question(question: str, k: int = 3):
+def answer_question(question: str, k: int = 5):
 
     try:
 
@@ -173,18 +177,7 @@ def answer_question(question: str, k: int = 3):
                 "no_context": True,
             }
 
-        docs = [
-            doc for doc, score in docs_and_scores
-            if score < 0.6
-        ]
-
-        if not docs:
-
-            return {
-                "answer": "No relevant information found.",
-                "sources": [],
-                "no_context": True,
-            }
+        docs = [doc for doc, score in docs_and_scores]
 
         context = "\n\n".join(
             clean_text(doc.page_content)
@@ -226,7 +219,7 @@ def answer_question(question: str, k: int = 3):
 
 
 # ---------------------------
-# INGEST DOCUMENTS (FREE TIER SAFE)
+# INGEST DOCUMENTS
 # ---------------------------
 def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
@@ -271,7 +264,7 @@ def ingest_documents(file_paths: list[tuple[str, str]]) -> int:
 
         vector_store.add_documents(chunks)
 
-        print(f"Successfully ingested {len(chunks)} chunks")
+        print(f"Ingested {len(chunks)} chunks successfully")
 
     except Exception as e:
 
