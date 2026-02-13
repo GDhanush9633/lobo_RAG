@@ -393,7 +393,7 @@ st.markdown("""
     margin-bottom: 20px;
     text-align: center;
 ">
-    <h1 style="color: white; font-size: 28px; margin: 0;">🐺 LOBO AI Assistant</h1>
+    <h1 style="color: white; font-size: 28px; margin: 0;">Walworth - LOBO AI Assistant</h1>
 </div>
 """, unsafe_allow_html=True)
 
